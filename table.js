@@ -113,7 +113,7 @@ app.get('/menu', (req, res) => {
         }
         res.json(results);
     });
-})
+});
 
 // 5. Table List
 app.get('/tables', (req, res) => {
