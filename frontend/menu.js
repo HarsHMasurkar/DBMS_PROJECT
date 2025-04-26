@@ -1,18 +1,5 @@
-// Menu items with prices and categories
-const items = [
-  { id: 1, name: 'veggie spring rolls(4pcs)', tag: 'veg', price: 120, description: 'Crispy vegetable spring rolls served with sweet chili sauce' },
-  { id: 2, name: 'paneer tikka dry', tag: 'veg', price: 180, description: 'Marinated and grilled cottage cheese' },
-  { id: 3, name: 'french fries', tag: 'veg', price: 100, description: 'Crispy golden fries with seasoning' },
-  { id: 4, name: 'chicken 65 (dry/gravy)', tag: 'non-veg', price: 220, description: 'Spicy chicken preparation in your choice of style' },
-  { id: 5, name: 'chicken spring rolls (4 pcs)', tag: 'non-veg', price: 140, description: 'Crispy chicken spring rolls with dipping sauce' },
-  { id: 6, name: 'egg bonda (2 pcs)', tag: 'non-veg', price: 80, description: 'Spiced egg fritters' },
-  { id: 7, name: 'veg club sandwich', tag: 'veg', price: 150, description: 'Triple-decker sandwich with fresh vegetables' },
-  { id: 8, name: 'veggie burger', tag: 'veg', price: 160, description: 'Plant-based patty with fresh vegetables' },
-  { id: 9, name: 'chicken club sandwich', tag: 'non-veg', price: 180, description: 'Triple-decker sandwich with grilled chicken' },
-  { id: 10, name: 'chicken burger', tag: 'non-veg', price: 190, description: 'Grilled chicken patty with fresh vegetables' },
-  { id: 11, name: 'coffee', tag: 'drink', price: 80, description: 'Freshly brewed coffee' },
-  { id: 12, name: 'cold drink', tag: 'drink', price: 60, description: 'Choice of soft drinks' }
-];
+// Menu items will be fetched from the backend
+let items = [];
 
 // Cache DOM elements
 const itemList = document.getElementById('itemList');
@@ -31,6 +18,21 @@ let filters = {
 };
 
 let cart = new Map();
+
+// Fetch menu items from the backend
+async function fetchMenuItems() {
+  try {
+    const response = await fetch('http://localhost:3000/api/menu');
+    if (!response.ok) {
+      throw new Error('Failed to fetch menu items');
+    }
+    items = await response.json();
+    renderItems();
+  } catch (error) {
+    console.error('Error fetching menu items:', error);
+    itemList.innerHTML = '<div class="error">Failed to load menu items. Please try again later.</div>';
+  }
+}
 
 // Debounce function for search
 function debounce(func, wait) {
@@ -210,18 +212,61 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Checkout
   if (checkoutBtn) {
-    checkoutBtn.addEventListener('click', () => {
+    checkoutBtn.addEventListener('click', async () => {
       if (cart.size === 0) {
         alert('Your cart is empty!');
         return;
       }
       
-      // Here you would typically redirect to a checkout page
-      alert('Proceeding to checkout...');
-      console.log('Cart items:', Array.from(cart.entries()));
+      try {
+        // Get the current user's ID from localStorage or session
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+          alert('Please login to place an order');
+          return;
+        }
+
+        // Prepare order items
+        const orderItems = Array.from(cart.entries()).map(([itemId, quantity]) => {
+          const item = items.find(i => i.id === itemId);
+          return {
+            id: itemId,
+            quantity: quantity,
+            price: item.price
+          };
+        });
+
+        // Calculate total amount
+        const totalAmount = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+        // Send order to backend
+        const response = await fetch('http://localhost:3000/api/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: parseInt(userId),
+            items: orderItems,
+            totalAmount: totalAmount
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to place order');
+        }
+
+        const result = await response.json();
+        alert('Order placed successfully! Order ID: ' + result.orderId);
+        cart.clear();
+        renderItems();
+      } catch (error) {
+        console.error('Error placing order:', error);
+        alert('Failed to place order. Please try again later.');
+      }
     });
   }
   
-  // Initialize
-  renderItems();
+  // Fetch menu items when the page loads
+  fetchMenuItems();
 });
