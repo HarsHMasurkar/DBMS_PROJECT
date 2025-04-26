@@ -19,19 +19,133 @@ let filters = {
 
 let cart = new Map();
 
-// Fetch menu items from the backend
-async function fetchMenuItems() {
-  try {
-    const response = await fetch('http://localhost:3000/api/menu');
-    if (!response.ok) {
-      throw new Error('Failed to fetch menu items');
+// Check if user is logged in
+document.addEventListener('DOMContentLoaded', () => {
+    // Check if user is logged in
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = 'login.html';
+        return;
     }
-    items = await response.json();
-    renderItems();
-  } catch (error) {
-    console.error('Error fetching menu items:', error);
-    itemList.innerHTML = '<div class="error">Failed to load menu items. Please try again later.</div>';
-  }
+
+    // Display user name
+    const userName = localStorage.getItem('userName') || 'Staff';
+    document.getElementById('userName').textContent = userName;
+
+    // Load menu items
+    loadMenuItems();
+
+    // Setup category filters
+    setupCategoryFilters();
+});
+
+function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userName');
+    window.location.href = 'login.html';
+}
+
+async function loadMenuItems() {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:3000/api/menu', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load menu items');
+        }
+
+        const menuItems = await response.json();
+        displayMenuItems(menuItems);
+    } catch (error) {
+        console.error('Error loading menu items:', error);
+        alert('Failed to load menu items. Please try again later.');
+    }
+}
+
+function displayMenuItems(items) {
+    const menuContainer = document.getElementById('menuItems');
+    menuContainer.innerHTML = '';
+
+    items.forEach(item => {
+        const price = parseFloat(item.price);
+        const formattedPrice = isNaN(price) ? '0.00' : price.toFixed(2);
+
+        const menuItem = document.createElement('div');
+        menuItem.className = 'col-md-4 mb-4';
+        menuItem.innerHTML = `
+            <div class="card menu-item h-100">
+                <div class="card-body">
+                    <span class="badge ${item.availability ? 'bg-success' : 'bg-danger'} availability-badge">
+                        ${item.availability ? 'Available' : 'Unavailable'}
+                    </span>
+                    <span class="badge bg-info category-badge">${item.category}</span>
+                    <h5 class="card-title mt-4">${item.name}</h5>
+                    <p class="card-text">${item.description || ''}</p>
+                    <p class="price">₹${formattedPrice}</p>
+                    <button class="btn btn-sm ${item.availability ? 'btn-danger' : 'btn-success'}"
+                            onclick="toggleAvailability(${item.id}, ${!item.availability})">
+                        ${item.availability ? 'Mark Unavailable' : 'Mark Available'}
+                    </button>
+                </div>
+            </div>
+        `;
+        menuContainer.appendChild(menuItem);
+    });
+}
+
+function setupCategoryFilters() {
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    filterButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Update active state
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+
+            // Filter menu items
+            const category = button.dataset.category;
+            filterMenuItems(category);
+        });
+    });
+}
+
+function filterMenuItems(category) {
+    const menuItems = document.querySelectorAll('.col-md-4');
+    menuItems.forEach(item => {
+        const itemCategory = item.querySelector('.category-badge').textContent;
+        if (category === 'all' || itemCategory === category) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+async function toggleAvailability(itemId, newAvailability) {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`http://localhost:3000/api/menu/${itemId}/availability`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ availability: newAvailability })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to update availability');
+        }
+
+        // Reload menu items to reflect changes
+        loadMenuItems();
+    } catch (error) {
+        console.error('Error updating availability:', error);
+        alert('Failed to update availability. Please try again later.');
+    }
 }
 
 // Debounce function for search
@@ -268,5 +382,5 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   // Fetch menu items when the page loads
-  fetchMenuItems();
+  loadMenuItems();
 });

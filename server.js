@@ -150,30 +150,37 @@ app.post('/api/login', async (req, res) => {
 });
 
 // Get all menu items
-app.get('/api/menu', (req, res) => {
-    db.query('SELECT * FROM menu_items', (err, results) => {
+app.get('/api/menu', authenticateToken, (req, res) => {
+    console.log('Fetching menu items');
+    db.query('SELECT * FROM menu_items ORDER BY category, name', (err, results) => {
         if (err) {
+            console.error('Error fetching menu items:', err);
             return res.status(500).json({ error: err.message });
         }
+        console.log('Menu items fetched successfully:', results.length, 'items');
         res.json(results);
     });
 });
 
 // Update menu item
 app.put('/api/menu/:id', authenticateToken, (req, res) => {
-    const { name, price, category, availability, description } = req.body;
+    const { name, price, category, description, image_url, availability } = req.body;
     const id = req.params.id;
+    console.log('Updating menu item:', id, req.body);
     
     db.query(
-        'UPDATE menu_items SET name = ?, price = ?, category = ?, availability = ?, description = ? WHERE id = ?',
-        [name, price, category, availability, description, id],
+        'UPDATE menu_items SET name = ?, price = ?, category = ?, description = ?, image_url = ?, availability = ? WHERE id = ?',
+        [name, price, category, description, image_url, availability, id],
         (err, results) => {
             if (err) {
+                console.error('Error updating menu item:', err);
                 return res.status(500).json({ error: err.message });
             }
             if (results.affectedRows === 0) {
+                console.log('Menu item not found:', id);
                 return res.status(404).json({ error: 'Menu item not found' });
             }
+            console.log('Menu item updated successfully:', id);
             res.json({ message: 'Menu item updated successfully' });
         }
     );
@@ -181,25 +188,47 @@ app.put('/api/menu/:id', authenticateToken, (req, res) => {
 
 // Add new menu item
 app.post('/api/menu', authenticateToken, (req, res) => {
-    const { name, price, category, description } = req.body;
+    const { name, price, category, description, image_url } = req.body;
+    console.log('Adding new menu item:', { name, price, category });
     
     if (!name || !price || !category) {
         return res.status(400).json({ error: 'Name, price, and category are required' });
     }
     
     db.query(
-        'INSERT INTO menu_items (name, price, category, description) VALUES (?, ?, ?, ?)',
-        [name, price, category, description],
+        'INSERT INTO menu_items (name, price, category, description, image_url, availability) VALUES (?, ?, ?, ?, ?, ?)',
+        [name, price, category, description, image_url, true],
         (err, results) => {
             if (err) {
+                console.error('Error adding menu item:', err);
                 return res.status(500).json({ error: err.message });
             }
+            console.log('Menu item added successfully:', results.insertId);
             res.status(201).json({ 
                 message: 'Menu item added successfully',
                 id: results.insertId
             });
         }
     );
+});
+
+// Delete menu item
+app.delete('/api/menu/:id', authenticateToken, (req, res) => {
+    const id = req.params.id;
+    console.log('Deleting menu item:', id);
+    
+    db.query('DELETE FROM menu_items WHERE id = ?', [id], (err, results) => {
+        if (err) {
+            console.error('Error deleting menu item:', err);
+            return res.status(500).json({ error: err.message });
+        }
+        if (results.affectedRows === 0) {
+            console.log('Menu item not found:', id);
+            return res.status(404).json({ error: 'Menu item not found' });
+        }
+        console.log('Menu item deleted successfully:', id);
+        res.json({ message: 'Menu item deleted successfully' });
+    });
 });
 
 // Get all tables
