@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Menu Page</title>
+  <link rel="stylesheet" href="menu.css">
+</head>
+<body>
+  <div class="menu-container">
+    <div class="top-bar">
+      <input type="text" id="searchBox" placeholder="Search items...">
+      <button id="addItemBtn">+</button>
+    </div>
+
+    <div class="filters">
+    <button id="allBtn" class="active">all items</button>
+    <button id="vegBtn" class="active">veg</button>
+    <button id="nonVegBtn" class="active">non-veg</button>
+    <button id="drinksBtn" class="active">drinks</button>
+  </div>
+  
+    </div>
+
+    <div class="item-list" id="itemList">
+      <!-- Items will be populated by JS -->
+    </div>
+  </div>
+
+  <script src="menu.js"></script>
+</body>
+</html>

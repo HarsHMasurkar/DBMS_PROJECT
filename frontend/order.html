@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Order Page</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #1f1833;
+      font-family: Arial, sans-serif;
+      color: white;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 30px;
+      padding: 40px;
+    }
+
+    .item {
+      text-align: center;
+    }
+
+    .item-img {
+      width: 100%;
+      height: 120px;
+      background-color: #8a839e;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    .item-title {
+      margin: 5px 0;
+    }
+
+    .buttons {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .buttons button {
+      background-color: #8a839e;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      font-size: 18px;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .count {
+      min-width: 20px;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: flex-end;
+      padding: 20px 40px;
+    }
+
+    .order-summary {
+      display: flex;
+      background-color: #8a839e;
+      padding: 12px 20px;
+      border-radius: 6px;
+      gap: 12px;
+    }
+
+    .order-summary span {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container" id="menuContainer">
+    <!-- Items will be inserted here -->
+  </div>
+
+  <div class="footer">
+    <div class="order-summary">
+      <span>ORDER TOTAL</span>
+      <span id="orderTotal">RS 0</span>
+    </div>
+  </div>
+
+  <script>
+    const menu = [
+      { name: "chicken burger", price: 180 },
+      { name: "paneer tikka dry", price: 145 },
+      { name: "veggie burger", price: 139 },
+      { name: "veggie spring roll (4pcs)", price: 99 },
+      { name: "chicken spring roll (4pcs)", price: 129 },
+      { name: "veggie club sandwich", price: 119 },
+      { name: "coffee", price: 59 },
+      { name: "cold drinks", price: 69 },
+    ];
+
+    const container = document.getElementById("menuContainer");
+    const orderTotalEl = document.getElementById("orderTotal");
+
+    let total = 0;
+    const counts = new Array(menu.length).fill(0);
+
+    function updateTotal() {
+      total = 0;
+      counts.forEach((count, idx) => {
+        total += count * menu[idx].price;
+      });
+      orderTotalEl.textContent = `RS ${total}`;
+    }
+
+    menu.forEach((item, idx) => {
+      const div = document.createElement("div");
+      div.className = "item";
+
+      div.innerHTML = `
+        <div class="item-img"></div>
+        <div class="item-title">${item.name} RS ${item.price}</div>
+        <div class="buttons">
+          <button onclick="decrease(${idx})">-</button>
+          <span class="count" id="count-${idx}">0</span>
+          <button onclick="increase(${idx})">+</button>
+        </div>
+      `;
+
+      container.appendChild(div);
+    });
+
+    function increase(idx) {
+      counts[idx]++;
+      document.getElementById(`count-${idx}`).textContent = counts[idx];
+      updateTotal();
+    }
+
+    function decrease(idx) {
+      if (counts[idx] > 0) {
+        counts[idx]--;
+        document.getElementById(`count-${idx}`).textContent = counts[idx];
+        updateTotal();
+      }
+    }
+  </script>
+</body>
+</html>

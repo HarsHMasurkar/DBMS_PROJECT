@@ -1,0 +1,123 @@
+body {
+    background-color: #251c3f;
+    font-family: Arial, sans-serif;
+    color: white;
+    margin: 0;
+    padding: 30px;
+  }
+  
+  .menu-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .top-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .top-bar input {
+    padding: 10px;
+    width: 300px;
+    border-radius: 8px;
+    border: none;
+    background: #a59eb4;
+    color: white;
+  }
+  
+  .top-bar button {
+    background-color: #a59eb4;
+    color: #251c3f;
+    border: none;
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  
+  .filters {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  
+  .filters button {
+    background-color: #726e87;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s;
+  }
+
+  .filters button.active{
+    background-color: white;
+    color:#251c3f;
+    font-weight: bold;
+  }
+  
+  .switch-label {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+    background-color: #726e87;
+    border-radius: 8px;
+    padding: 5px;
+    color: white;
+    font-size: 14px;
+  }
+  
+  .switch-label input {
+    display: none;
+  }
+  
+  .slider {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    height: 24px;
+    width: 24px;
+    background-color: #00ff88;
+    border-radius: 50%;
+    transition: 0.3s;
+  }
+  
+  .item-list {
+    background-color: #e6deee;
+    padding: 20px;
+    border-radius: 8px;
+    color: black;
+    max-width: 500px;
+    margin-top: 30px;
+  }
+  
+  .item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  
+  .item-type {
+    width: 25px;
+    height: 25px;
+    background-color: #726e87;
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    margin-right: 10px;
+    font-weight: bold;
+  }
+  
+  .item label {
+    flex: 1;
+  }
+  
+  .item input[type="checkbox"] {
+    transform: scale(1.2);
+  }
+  
