@@ -106,7 +106,7 @@ function displayMenuItems(items) {
             const menuItem = document.createElement('div');
             menuItem.className = 'col-md-6 col-lg-4 mb-4';
             menuItem.innerHTML = `
-                <div class="card menu-item">
+                <div class="card menu-item" data-item-id="${item.id}">
                     <div class="card-body">
                         <h5 class="card-title">${item.name}</h5>
                         <p class="card-text">${item.description || ''}</p>
@@ -131,6 +131,14 @@ function updateQuantity(itemId, change) {
     let currentQuantity = parseInt(quantityDisplay.textContent);
     currentQuantity = Math.max(0, currentQuantity + change);
     quantityDisplay.textContent = currentQuantity;
+    
+    // Update cart Map
+    if (currentQuantity > 0) {
+        cart.set(itemId, currentQuantity);
+    } else {
+        cart.delete(itemId);
+    }
+    
     updateCart();
 }
 
@@ -140,14 +148,11 @@ function updateCart() {
     let total = 0;
     cartItems.innerHTML = '';
 
-    const menuItems = document.querySelectorAll('.menu-item');
-    menuItems.forEach(item => {
-        const itemId = item.querySelector('.quantity-control').getAttribute('onclick').match(/\d+/)[0];
-        const quantity = parseInt(document.getElementById(`quantity-${itemId}`).textContent);
-        
-        if (quantity > 0) {
-            const name = item.querySelector('.card-title').textContent;
-            const price = parseFloat(item.querySelector('.price').textContent.replace('₹', ''));
+    cart.forEach((quantity, itemId) => {
+        const menuItem = document.querySelector(`.menu-item[data-item-id="${itemId}"]`);
+        if (menuItem) {
+            const name = menuItem.querySelector('.card-title').textContent;
+            const price = parseFloat(menuItem.querySelector('.price').textContent.replace('₹', ''));
             const itemTotal = price * quantity;
             total += itemTotal;
 
@@ -173,15 +178,15 @@ async function placeOrder() {
         return;
     }
 
-    const cartItems = Array.from(document.querySelectorAll('.cart-item')).map(item => ({
-        id: parseInt(item.dataset.itemId),
-        quantity: parseInt(item.querySelector('.quantity-display').textContent)
-    }));
-
-    if (cartItems.length === 0) {
+    if (cart.size === 0) {
         alert('Your cart is empty');
         return;
     }
+
+    const orderItems = Array.from(cart.entries()).map(([itemId, quantity]) => ({
+        id: parseInt(itemId),
+        quantity: quantity
+    }));
 
     try {
         const response = await fetch('http://localhost:3000/api/orders', {
@@ -192,7 +197,7 @@ async function placeOrder() {
             },
             body: JSON.stringify({
                 table_id: parseInt(tableId),
-                items: cartItems
+                items: orderItems
             })
         });
 
@@ -204,6 +209,7 @@ async function placeOrder() {
         alert('Order placed successfully!');
         
         // Clear the cart
+        cart.clear();
         document.getElementById('cartItems').innerHTML = '';
         document.getElementById('cartTotal').textContent = '0.00';
         
