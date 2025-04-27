@@ -35,19 +35,47 @@ async function loadTables() {
         const tableSelect = document.getElementById('tableSelect');
         tableSelect.innerHTML = '<option value="">Select a table...</option>';
 
-        tables.forEach(table => {
-            if (table.status === 'available') {
+        // Group tables by floor
+        const tablesByFloor = tables.reduce((acc, table) => {
+            if (!acc[table.floor]) {
+                acc[table.floor] = [];
+            }
+            acc[table.floor].push(table);
+            return acc;
+        }, {});
+
+        // Add tables to dropdown, grouped by floor
+        Object.keys(tablesByFloor).sort().forEach(floor => {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = `Floor ${floor}`;
+            
+            tablesByFloor[floor].forEach(table => {
                 const option = document.createElement('option');
                 option.value = table.id;
-                option.textContent = `Table ${table.table_number} (Floor ${table.floor})`;
-                tableSelect.appendChild(option);
-            }
+                option.textContent = `Table ${table.table_number} (${table.capacity} people) - ${table.status}`;
+                option.disabled = table.status !== 'available';
+                optgroup.appendChild(option);
+            });
+            
+            tableSelect.appendChild(optgroup);
         });
     } catch (error) {
         console.error('Error loading tables:', error);
         alert('Failed to load tables. Please try again.');
     }
 }
+
+// Add event listener for table selection
+document.getElementById('tableSelect').addEventListener('change', function() {
+    const selectedTable = this.value;
+    if (selectedTable) {
+        // Enable the place order button if a table is selected
+        document.querySelector('.btn-place-order').disabled = false;
+    } else {
+        // Disable the place order button if no table is selected
+        document.querySelector('.btn-place-order').disabled = true;
+    }
+});
 
 async function loadMenuItems() {
     try {
@@ -141,26 +169,17 @@ function updateCart() {
 async function placeOrder() {
     const tableId = document.getElementById('tableSelect').value;
     if (!tableId) {
-        alert('Please select a table');
+        alert('Please select a table first');
         return;
     }
 
-    const orderItems = [];
-    const menuItems = document.querySelectorAll('.menu-item');
-    menuItems.forEach(item => {
-        const itemId = item.querySelector('.quantity-control').getAttribute('onclick').match(/\d+/)[0];
-        const quantity = parseInt(document.getElementById(`quantity-${itemId}`).textContent);
-        
-        if (quantity > 0) {
-            orderItems.push({
-                menu_item_id: parseInt(itemId),
-                quantity: quantity
-            });
-        }
-    });
+    const cartItems = Array.from(document.querySelectorAll('.cart-item')).map(item => ({
+        id: parseInt(item.dataset.itemId),
+        quantity: parseInt(item.querySelector('.quantity-display').textContent)
+    }));
 
-    if (orderItems.length === 0) {
-        alert('Please add items to your order');
+    if (cartItems.length === 0) {
+        alert('Your cart is empty');
         return;
     }
 
@@ -173,7 +192,7 @@ async function placeOrder() {
             },
             body: JSON.stringify({
                 table_id: parseInt(tableId),
-                items: orderItems
+                items: cartItems
             })
         });
 
@@ -184,23 +203,16 @@ async function placeOrder() {
         const result = await response.json();
         alert('Order placed successfully!');
         
-        // Update table status to occupied
-        await fetch(`http://localhost:3000/api/tables/${tableId}/status`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({ status: 'occupied' })
-        });
-
-        // Reset the form
+        // Clear the cart
+        document.getElementById('cartItems').innerHTML = '';
+        document.getElementById('cartTotal').textContent = '0.00';
+        
+        // Reset table selection
         document.getElementById('tableSelect').value = '';
-        menuItems.forEach(item => {
-            const itemId = item.querySelector('.quantity-control').getAttribute('onclick').match(/\d+/)[0];
-            document.getElementById(`quantity-${itemId}`).textContent = '0';
-        });
-        updateCart();
+        document.querySelector('.btn-place-order').disabled = true;
+        
+        // Reload tables to update their status
+        loadTables();
     } catch (error) {
         console.error('Error placing order:', error);
         alert('Failed to place order. Please try again.');

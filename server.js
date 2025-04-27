@@ -263,8 +263,14 @@ app.get('/api/tables/:id', authenticateToken, (req, res) => {
 
 app.put('/api/tables/:id/status', authenticateToken, (req, res) => {
     const { status } = req.body;
+    const { id } = req.params;
+    
+    if (!['available', 'occupied', 'reserved'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid status' });
+    }
+
     const query = 'UPDATE tables SET status = ? WHERE id = ?';
-    db.query(query, [status, req.params.id], (err, results) => {
+    db.query(query, [status, id], (err, results) => {
         if (err) {
             console.error('Error updating table status:', err);
             return res.status(500).json({ error: 'Error updating table status' });
@@ -605,35 +611,31 @@ app.put('/api/orders/:id', authenticateToken, (req, res) => {
 
 // Get dashboard data
 app.get('/api/dashboard', authenticateToken, (req, res) => {
-    // Get today's sales
-    const today = new Date().toISOString().split('T')[0];
-    
-    db.query(`
-        SELECT COUNT(*) as pendingOrders, SUM(total_price) as todaySales
-        FROM orders
-        WHERE DATE(created_at) = ? AND status = 'pending'
-    `, [today], (err, results) => {
+    // Get total reservations
+    db.query('SELECT COUNT(*) as pendingReservations FROM tables WHERE status = ?', ['reserved'], (err, results) => {
         if (err) {
-            return res.status(500).json({ error: err.message });
+            console.error('Error fetching dashboard data:', err);
+            return res.status(500).json({ error: 'Error fetching dashboard data' });
         }
-        
-        const pendingOrders = results[0].pendingOrders || 0;
-        
-        // Get total sales for today
+
+        const pendingReservations = results[0].pendingReservations;
+
+        // Get other dashboard data
         db.query(`
-            SELECT SUM(total_price) as totalSales
-            FROM orders
-            WHERE DATE(created_at) = ? AND status = 'completed'
-        `, [today], (err, results) => {
+            SELECT 
+                COUNT(*) as totalTables,
+                SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) as availableTables,
+                SUM(CASE WHEN status = 'occupied' THEN 1 ELSE 0 END) as occupiedTables
+            FROM tables
+        `, (err, results) => {
             if (err) {
-                return res.status(500).json({ error: err.message });
+                console.error('Error fetching dashboard data:', err);
+                return res.status(500).json({ error: 'Error fetching dashboard data' });
             }
-            
-            const todaySales = results[0].totalSales || 0;
-            
+
             res.json({
-                pendingOrders,
-                todaySales
+                ...results[0],
+                pendingReservations
             });
         });
     });

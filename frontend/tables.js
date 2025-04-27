@@ -76,14 +76,28 @@ function displayTables(tables) {
                                 ${table.status}
                             </span>
                         </p>
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex flex-wrap gap-2">
                             <button class="btn btn-primary btn-sm" onclick="viewTableDetails(${table.id})">
                                 View Details
                             </button>
-                            <button class="btn btn-success btn-sm" onclick="reserveTable(${table.id})" 
-                                ${table.status !== 'available' ? 'disabled' : ''}>
-                                Reserve
-                            </button>
+                            ${table.status === 'available' ? `
+                                <button class="btn btn-success btn-sm" onclick="reserveTable(${table.id})">
+                                    Reserve
+                                </button>
+                                <button class="btn btn-warning btn-sm" onclick="occupyTable(${table.id})">
+                                    Occupy
+                                </button>
+                            ` : ''}
+                            ${table.status === 'reserved' ? `
+                                <button class="btn btn-danger btn-sm" onclick="clearTable(${table.id})">
+                                    Cancel Reservation
+                                </button>
+                            ` : ''}
+                            ${table.status === 'occupied' ? `
+                                <button class="btn btn-danger btn-sm" onclick="clearTable(${table.id})">
+                                    Clear Table
+                                </button>
+                            ` : ''}
                         </div>
                     </div>
                 </div>
@@ -179,10 +193,50 @@ async function updateTableStatus(tableId, newStatus) {
 
         // Reload tables to show updated status
         loadTables();
+        
+        // If status is being changed to reserved, update dashboard
+        if (newStatus === 'reserved') {
+            updateDashboardReservations();
+        }
     } catch (error) {
         console.error('Error updating table status:', error);
         alert('Failed to update table status. Please try again.');
     }
+}
+
+async function updateDashboardReservations() {
+    try {
+        const response = await fetch('http://localhost:3000/api/dashboard', {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to update dashboard');
+        }
+
+        const data = await response.json();
+        // Update the reservations count on the dashboard
+        const reservationsCount = document.getElementById('reservationsCount');
+        if (reservationsCount) {
+            reservationsCount.textContent = data.pendingReservations || 0;
+        }
+    } catch (error) {
+        console.error('Error updating dashboard:', error);
+    }
+}
+
+function reserveTable(tableId) {
+    updateTableStatus(tableId, 'reserved');
+}
+
+function clearTable(tableId) {
+    updateTableStatus(tableId, 'available');
+}
+
+function occupyTable(tableId) {
+    updateTableStatus(tableId, 'occupied');
 }
 
 function getStatusColor(status) {
