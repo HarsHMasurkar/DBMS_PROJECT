@@ -5,6 +5,7 @@ const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const path = require('path');
 
 const app = express();
 const port = 3000;
@@ -13,6 +14,9 @@ const JWT_SECRET = 'cafe-management-secret-key'; // In production, use environme
 // Enable CORS for all routes
 app.use(cors());
 app.use(bodyParser.json());
+
+// Serve static files from the frontend directory
+app.use(express.static(path.join(__dirname, 'frontend')));
 
 // MySQL connection configuration
 const db = mysql.createConnection({
