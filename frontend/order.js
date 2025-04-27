@@ -52,9 +52,8 @@ async function loadTables() {
             tablesByFloor[floor].forEach(table => {
                 const option = document.createElement('option');
                 option.value = table.id;
-                const status = table.current_status || table.status;
-                option.textContent = `Table ${table.table_number} (${table.capacity} people) - ${status}`;
-                option.disabled = status !== 'available';
+                option.textContent = `Table ${table.table_number} (${table.capacity} people) - ${table.status}`;
+                option.disabled = table.status !== 'available';
                 optgroup.appendChild(option);
             });
             
@@ -64,12 +63,23 @@ async function loadTables() {
         // Add event listener for table selection
         tableSelect.addEventListener('change', function() {
             const selectedTable = this.value;
+            const placeOrderBtn = document.querySelector('.btn-place-order');
+            
             if (selectedTable) {
                 // Enable the place order button if a table is selected
-                document.querySelector('.btn-place-order').disabled = false;
+                placeOrderBtn.disabled = false;
+                
+                // Get the selected table's status
+                const selectedOption = this.options[this.selectedIndex];
+                const tableStatus = selectedOption.textContent.split(' - ')[1];
+                
+                if (tableStatus !== 'available') {
+                    alert('This table is not available for ordering');
+                    placeOrderBtn.disabled = true;
+                }
             } else {
                 // Disable the place order button if no table is selected
-                document.querySelector('.btn-place-order').disabled = true;
+                placeOrderBtn.disabled = true;
             }
         });
     } catch (error) {
