@@ -74,7 +74,7 @@ app.post('/api/register', async (req, res) => {
             'INSERT INTO user (name, email, password, role) VALUES (?, ?, ?, ?)',
             [name, email, hashedPassword, role],
             (err, results) => {
-                if (err) {
+            if (err) {
                     if (err.code === 'ER_DUP_ENTRY') {
                         return res.status(409).json({ error: 'Email already exists' });
                     }
@@ -292,7 +292,7 @@ app.post('/api/reservations', authenticateToken, (req, res) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
-        
+
         if (results.length === 0) {
             return res.status(404).json({ error: 'Table not found' });
         }

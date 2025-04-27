@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadTables();
     setupStatusFilters();
+    addBookingModal();
 });
 
 function logout() {
@@ -34,6 +35,43 @@ async function loadTables() {
         console.error('Error loading tables:', error);
         alert('Failed to load tables. Please try again.');
     }
+}
+
+function addBookingModal() {
+    const modalHTML = `
+        <div class="modal fade" id="bookingModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Book Table</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="bookingForm">
+                            <div class="mb-3">
+                                <label for="customerName" class="form-label">Customer Name</label>
+                                <input type="text" class="form-control" id="customerName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="phoneNumber" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phoneNumber" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="reservationTime" class="form-label">Reservation Time</label>
+                                <input type="datetime-local" class="form-control" id="reservationTime" required>
+                            </div>
+                            <input type="hidden" id="tableId">
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="submitBooking()">Book Table</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
 function displayTables(tables) {
@@ -77,13 +115,12 @@ function displayTables(tables) {
                             </span>
                         </p>
                         <div class="d-flex flex-wrap gap-2">
-                            <button class="btn btn-primary btn-sm" onclick="viewTableDetails(${table.id})">
-                                View Details
+                            <button class="btn btn-primary btn-sm" 
+                                onclick="openBookingModal(${table.id})"
+                                ${table.status !== 'available' ? 'disabled' : ''}>
+                                Book Table
                             </button>
                             ${table.status === 'available' ? `
-                                <button class="btn btn-success btn-sm" onclick="reserveTable(${table.id})">
-                                    Reserve
-                                </button>
                                 <button class="btn btn-warning btn-sm" onclick="occupyTable(${table.id})">
                                     Occupy
                                 </button>
@@ -137,46 +174,7 @@ function filterTables(status) {
     });
 }
 
-async function showTableDetails(tableId) {
-    try {
-        const response = await fetch(`http://localhost:3000/api/tables/${tableId}`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to load table details');
-        }
-
-        const table = await response.json();
-        const modal = new bootstrap.Modal(document.getElementById('tableDetailsModal'));
-        
-        document.getElementById('tableDetails').innerHTML = `
-            <div class="table-details">
-                <p><strong>Table Number:</strong> ${table.table_number}</p>
-                <p><strong>Floor:</strong> ${table.floor}</p>
-                <p><strong>Status:</strong> <span class="badge bg-${getStatusColor(table.status)}">${table.status}</span></p>
-                <p><strong>Capacity:</strong> ${table.capacity} persons</p>
-                ${table.current_order ? `
-                    <div class="mt-3">
-                        <h6>Current Order</h6>
-                        <p><strong>Order ID:</strong> ${table.current_order.id}</p>
-                        <p><strong>Total Amount:</strong> ₹${table.current_order.total_amount}</p>
-                        <p><strong>Status:</strong> ${table.current_order.status}</p>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-        
-        modal.show();
-    } catch (error) {
-        console.error('Error loading table details:', error);
-        alert('Failed to load table details. Please try again.');
-    }
-}
-
-async function updateTableStatus(tableId, newStatus) {
+async function reserveTable(tableId) {
     try {
         const response = await fetch(`http://localhost:3000/api/tables/${tableId}/status`, {
             method: 'PUT',
@@ -184,23 +182,79 @@ async function updateTableStatus(tableId, newStatus) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
-            body: JSON.stringify({ status: newStatus })
+            body: JSON.stringify({ status: 'reserved' })
         });
 
         if (!response.ok) {
-            throw new Error('Failed to update table status');
+            throw new Error('Failed to reserve table');
         }
 
+        // Show success message
+        alert('Table reserved successfully!');
+        
         // Reload tables to show updated status
         loadTables();
         
-        // If status is being changed to reserved, update dashboard
-        if (newStatus === 'reserved') {
-            updateDashboardReservations();
-        }
+        // Update dashboard reservations count
+        updateDashboardReservations();
     } catch (error) {
-        console.error('Error updating table status:', error);
-        alert('Failed to update table status. Please try again.');
+        console.error('Error reserving table:', error);
+        alert('Failed to reserve table. Please try again.');
+    }
+}
+
+async function clearTable(tableId) {
+    try {
+        const response = await fetch(`http://localhost:3000/api/tables/${tableId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ status: 'available' })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to clear table');
+        }
+
+        // Show success message
+        alert('Table cleared successfully!');
+        
+        // Reload tables to show updated status
+        loadTables();
+        
+        // Update dashboard reservations count
+        updateDashboardReservations();
+    } catch (error) {
+        console.error('Error clearing table:', error);
+        alert('Failed to clear table. Please try again.');
+    }
+}
+
+async function occupyTable(tableId) {
+    try {
+        const response = await fetch(`http://localhost:3000/api/tables/${tableId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ status: 'occupied' })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to occupy table');
+        }
+
+        // Show success message
+        alert('Table occupied successfully!');
+        
+        // Reload tables to show updated status
+        loadTables();
+    } catch (error) {
+        console.error('Error occupying table:', error);
+        alert('Failed to occupy table. Please try again.');
     }
 }
 
@@ -227,31 +281,6 @@ async function updateDashboardReservations() {
     }
 }
 
-function reserveTable(tableId) {
-    updateTableStatus(tableId, 'reserved');
-}
-
-function clearTable(tableId) {
-    updateTableStatus(tableId, 'available');
-}
-
-function occupyTable(tableId) {
-    updateTableStatus(tableId, 'occupied');
-}
-
-function getStatusColor(status) {
-    switch (status.toLowerCase()) {
-        case 'available':
-            return 'success';
-        case 'occupied':
-            return 'danger';
-        case 'reserved':
-            return 'warning';
-        default:
-            return 'secondary';
-    }
-}
-
 function getStatusBadgeClass(status) {
     switch (status) {
         case 'available':
@@ -262,5 +291,62 @@ function getStatusBadgeClass(status) {
             return 'bg-warning';
         default:
             return 'bg-secondary';
+    }
+}
+
+function openBookingModal(tableId) {
+    document.getElementById('tableId').value = tableId;
+    const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
+    modal.show();
+}
+
+async function submitBooking() {
+    const tableId = document.getElementById('tableId').value;
+    const customerName = document.getElementById('customerName').value;
+    const phoneNumber = document.getElementById('phoneNumber').value;
+    const reservationTime = document.getElementById('reservationTime').value;
+
+    if (!customerName || !phoneNumber || !reservationTime) {
+        alert('Please fill in all fields');
+        return;
+    }
+
+    try {
+        const response = await fetch('http://localhost:3000/api/reservations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+                table_id: tableId,
+                customer_name: customerName,
+                phone_number: phoneNumber,
+                reservation_time: reservationTime
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to book table');
+        }
+
+        // Show success message
+        alert('Table booked successfully!');
+        
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('bookingModal'));
+        modal.hide();
+        
+        // Reset form
+        document.getElementById('bookingForm').reset();
+        
+        // Reload tables to show updated status
+        loadTables();
+        
+        // Update dashboard reservations count
+        updateDashboardReservations();
+    } catch (error) {
+        console.error('Error booking table:', error);
+        alert('Failed to book table. Please try again.');
     }
 } 
