@@ -237,7 +237,20 @@ app.delete('/api/menu/:id', authenticateToken, (req, res) => {
 
 // Table Management Endpoints
 app.get('/api/tables', authenticateToken, (req, res) => {
-    const query = 'SELECT * FROM tables ORDER BY floor, table_number';
+    const query = `
+        SELECT t.*, 
+               CASE 
+                   WHEN EXISTS (
+                       SELECT 1 FROM orders o 
+                       WHERE o.table_id = t.id 
+                       AND o.status = 'pending'
+                   ) THEN 'occupied'
+                   ELSE t.status
+               END as current_status
+        FROM tables t
+        ORDER BY t.floor, t.table_number
+    `;
+    
     db.query(query, (err, results) => {
         if (err) {
             console.error('Error fetching tables:', err);

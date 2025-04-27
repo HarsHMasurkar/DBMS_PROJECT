@@ -52,30 +52,31 @@ async function loadTables() {
             tablesByFloor[floor].forEach(table => {
                 const option = document.createElement('option');
                 option.value = table.id;
-                option.textContent = `Table ${table.table_number} (${table.capacity} people) - ${table.status}`;
-                option.disabled = table.status !== 'available';
+                const status = table.current_status || table.status;
+                option.textContent = `Table ${table.table_number} (${table.capacity} people) - ${status}`;
+                option.disabled = status !== 'available';
                 optgroup.appendChild(option);
             });
             
             tableSelect.appendChild(optgroup);
+        });
+
+        // Add event listener for table selection
+        tableSelect.addEventListener('change', function() {
+            const selectedTable = this.value;
+            if (selectedTable) {
+                // Enable the place order button if a table is selected
+                document.querySelector('.btn-place-order').disabled = false;
+            } else {
+                // Disable the place order button if no table is selected
+                document.querySelector('.btn-place-order').disabled = true;
+            }
         });
     } catch (error) {
         console.error('Error loading tables:', error);
         alert('Failed to load tables. Please try again.');
     }
 }
-
-// Add event listener for table selection
-document.getElementById('tableSelect').addEventListener('change', function() {
-    const selectedTable = this.value;
-    if (selectedTable) {
-        // Enable the place order button if a table is selected
-        document.querySelector('.btn-place-order').disabled = false;
-    } else {
-        // Disable the place order button if no table is selected
-        document.querySelector('.btn-place-order').disabled = true;
-    }
-});
 
 async function loadMenuItems() {
     try {
