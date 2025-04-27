@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS menu_items (
 CREATE TABLE IF NOT EXISTS tables (
     id INT AUTO_INCREMENT PRIMARY KEY,
     table_number INT NOT NULL UNIQUE,
+    floor INT NOT NULL,
     capacity INT NOT NULL,
     status VARCHAR(50) DEFAULT 'available'
 );

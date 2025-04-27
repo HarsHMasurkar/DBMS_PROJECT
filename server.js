@@ -235,38 +235,42 @@ app.delete('/api/menu/:id', authenticateToken, (req, res) => {
     });
 });
 
-// Get all tables
-app.get('/api/tables', (req, res) => {
-    db.query('SELECT * FROM tables', (err, results) => {
+// Table Management Endpoints
+app.get('/api/tables', authenticateToken, (req, res) => {
+    const query = 'SELECT * FROM tables ORDER BY floor, table_number';
+    db.query(query, (err, results) => {
         if (err) {
-            return res.status(500).json({ error: err.message });
+            console.error('Error fetching tables:', err);
+            return res.status(500).json({ error: 'Error fetching tables' });
         }
         res.json(results);
     });
 });
 
-// Update table status
-app.put('/api/tables/:id', authenticateToken, (req, res) => {
-    const { status } = req.body;
-    const id = req.params.id;
-    
-    if (!status) {
-        return res.status(400).json({ error: 'Status is required' });
-    }
-    
-    db.query(
-        'UPDATE tables SET status = ? WHERE id = ?',
-        [status, id],
-        (err, results) => {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-            if (results.affectedRows === 0) {
-                return res.status(404).json({ error: 'Table not found' });
-            }
-            res.json({ message: 'Table status updated successfully' });
+app.get('/api/tables/:id', authenticateToken, (req, res) => {
+    const query = 'SELECT * FROM tables WHERE id = ?';
+    db.query(query, [req.params.id], (err, results) => {
+        if (err) {
+            console.error('Error fetching table:', err);
+            return res.status(500).json({ error: 'Error fetching table' });
         }
-    );
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Table not found' });
+        }
+        res.json(results[0]);
+    });
+});
+
+app.put('/api/tables/:id/status', authenticateToken, (req, res) => {
+    const { status } = req.body;
+    const query = 'UPDATE tables SET status = ? WHERE id = ?';
+    db.query(query, [status, req.params.id], (err, results) => {
+        if (err) {
+            console.error('Error updating table status:', err);
+            return res.status(500).json({ error: 'Error updating table status' });
+        }
+        res.json({ message: 'Table status updated successfully' });
+    });
 });
 
 // Create a reservation

@@ -9,23 +9,21 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Load tables and menu items
     loadTables();
     loadMenuItems();
 });
 
 function logout() {
     localStorage.removeItem('token');
-    localStorage.removeItem('userName');
+    localStorage.removeItem('username');
     window.location.href = 'login.html';
 }
 
 async function loadTables() {
     try {
-        const token = localStorage.getItem('token');
         const response = await fetch('http://localhost:3000/api/tables', {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
         });
 
@@ -35,13 +33,8 @@ async function loadTables() {
 
         const tables = await response.json();
         const tableSelect = document.getElementById('tableSelect');
-        
-        // Clear existing options except the first one
-        while (tableSelect.options.length > 1) {
-            tableSelect.remove(1);
-        }
+        tableSelect.innerHTML = '<option value="">Select a table...</option>';
 
-        // Add available tables
         tables.forEach(table => {
             if (table.status === 'available') {
                 const option = document.createElement('option');
@@ -52,16 +45,15 @@ async function loadTables() {
         });
     } catch (error) {
         console.error('Error loading tables:', error);
-        alert('Failed to load tables. Please try again later.');
+        alert('Failed to load tables. Please try again.');
     }
 }
 
 async function loadMenuItems() {
     try {
-        const token = localStorage.getItem('token');
         const response = await fetch('http://localhost:3000/api/menu', {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
         });
 
@@ -73,87 +65,77 @@ async function loadMenuItems() {
         displayMenuItems(menuItems);
     } catch (error) {
         console.error('Error loading menu items:', error);
-        alert('Failed to load menu items. Please try again later.');
+        alert('Failed to load menu items. Please try again.');
     }
 }
 
 function displayMenuItems(items) {
-    const menuContainer = document.getElementById('menuItems');
-    menuContainer.innerHTML = '';
+    const container = document.getElementById('menuItems');
+    container.innerHTML = '';
 
     items.forEach(item => {
         if (item.availability) {
-            const price = parseFloat(item.price);
-            const formattedPrice = isNaN(price) ? '0.00' : price.toFixed(2);
-
             const menuItem = document.createElement('div');
-            menuItem.className = 'col-md-6 mb-4';
+            menuItem.className = 'col-md-6 col-lg-4 mb-4';
             menuItem.innerHTML = `
-                <div class="card menu-item h-100">
+                <div class="card menu-item">
                     <div class="card-body">
-                        <span class="badge bg-info category-badge">${item.category}</span>
-                        <h5 class="card-title mt-4">${item.name}</h5>
+                        <h5 class="card-title">${item.name}</h5>
                         <p class="card-text">${item.description || ''}</p>
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <span class="price">₹${formattedPrice}</span>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="price">₹${parseFloat(item.price).toFixed(2)}</span>
                             <div class="quantity-control">
-                                <button class="quantity-btn" onclick="updateQuantity(${item.id}, -1)">-</button>
+                                <button class="btn btn-sm btn-outline-primary" onclick="updateQuantity(${item.id}, -1)">-</button>
                                 <span class="quantity-display" id="quantity-${item.id}">0</span>
-                                <button class="quantity-btn" onclick="updateQuantity(${item.id}, 1)">+</button>
+                                <button class="btn btn-sm btn-outline-primary" onclick="updateQuantity(${item.id}, 1)">+</button>
                             </div>
                         </div>
                     </div>
                 </div>
             `;
-            menuContainer.appendChild(menuItem);
+            container.appendChild(menuItem);
         }
     });
 }
 
 function updateQuantity(itemId, change) {
-    const currentQuantity = cart.get(itemId) || 0;
-    const newQuantity = Math.max(0, currentQuantity + change);
-    
-    if (newQuantity === 0) {
-        cart.delete(itemId);
-    } else {
-        cart.set(itemId, newQuantity);
-    }
-    
-    document.getElementById(`quantity-${itemId}`).textContent = newQuantity;
-    updateCartDisplay();
+    const quantityDisplay = document.getElementById(`quantity-${itemId}`);
+    let currentQuantity = parseInt(quantityDisplay.textContent);
+    currentQuantity = Math.max(0, currentQuantity + change);
+    quantityDisplay.textContent = currentQuantity;
+    updateCart();
 }
 
-function updateCartDisplay() {
-    const cartItemsContainer = document.getElementById('cartItems');
-    cartItemsContainer.innerHTML = '';
-    
+function updateCart() {
+    const cartItems = document.getElementById('cartItems');
+    const cartTotal = document.getElementById('cartTotal');
     let total = 0;
-    
-    cart.forEach((quantity, itemId) => {
-        const menuItem = document.querySelector(`#quantity-${itemId}`).closest('.card');
-        const name = menuItem.querySelector('.card-title').textContent;
-        const price = parseFloat(menuItem.querySelector('.price').textContent.replace('₹', ''));
-        const itemTotal = price * quantity;
-        total += itemTotal;
+    cartItems.innerHTML = '';
+
+    const menuItems = document.querySelectorAll('.menu-item');
+    menuItems.forEach(item => {
+        const itemId = item.querySelector('.quantity-control').getAttribute('onclick').match(/\d+/)[0];
+        const quantity = parseInt(document.getElementById(`quantity-${itemId}`).textContent);
         
-        const cartItem = document.createElement('div');
-        cartItem.className = 'cart-item';
-        cartItem.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="mb-0">${name}</h6>
-                    <small class="text-muted">₹${price.toFixed(2)} × ${quantity}</small>
+        if (quantity > 0) {
+            const name = item.querySelector('.card-title').textContent;
+            const price = parseFloat(item.querySelector('.price').textContent.replace('₹', ''));
+            const itemTotal = price * quantity;
+            total += itemTotal;
+
+            const cartItem = document.createElement('div');
+            cartItem.className = 'cart-item';
+            cartItem.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>${name} x ${quantity}</span>
+                    <span>₹${itemTotal.toFixed(2)}</span>
                 </div>
-                <div class="text-end">
-                    <strong>₹${itemTotal.toFixed(2)}</strong>
-                </div>
-            </div>
-        `;
-        cartItemsContainer.appendChild(cartItem);
+            `;
+            cartItems.appendChild(cartItem);
+        }
     });
-    
-    document.getElementById('cartTotal').textContent = total.toFixed(2);
+
+    cartTotal.textContent = total.toFixed(2);
 }
 
 async function placeOrder() {
@@ -162,47 +144,65 @@ async function placeOrder() {
         alert('Please select a table');
         return;
     }
-    
-    if (cart.size === 0) {
+
+    const orderItems = [];
+    const menuItems = document.querySelectorAll('.menu-item');
+    menuItems.forEach(item => {
+        const itemId = item.querySelector('.quantity-control').getAttribute('onclick').match(/\d+/)[0];
+        const quantity = parseInt(document.getElementById(`quantity-${itemId}`).textContent);
+        
+        if (quantity > 0) {
+            orderItems.push({
+                menu_item_id: parseInt(itemId),
+                quantity: quantity
+            });
+        }
+    });
+
+    if (orderItems.length === 0) {
         alert('Please add items to your order');
         return;
     }
-    
+
     try {
-        const token = localStorage.getItem('token');
-        const orderItems = Array.from(cart.entries()).map(([itemId, quantity]) => ({
-            id: itemId,
-            quantity: quantity
-        }));
-        
         const response = await fetch('http://localhost:3000/api/orders', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
             body: JSON.stringify({
-                table_id: tableId,
+                table_id: parseInt(tableId),
                 items: orderItems
             })
         });
-        
+
         if (!response.ok) {
             throw new Error('Failed to place order');
         }
-        
+
         const result = await response.json();
         alert('Order placed successfully!');
         
-        // Clear cart and reset quantities
-        cart.clear();
-        document.querySelectorAll('.quantity-display').forEach(el => el.textContent = '0');
-        updateCartDisplay();
-        
-        // Reload tables to update availability
-        loadTables();
+        // Update table status to occupied
+        await fetch(`http://localhost:3000/api/tables/${tableId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ status: 'occupied' })
+        });
+
+        // Reset the form
+        document.getElementById('tableSelect').value = '';
+        menuItems.forEach(item => {
+            const itemId = item.querySelector('.quantity-control').getAttribute('onclick').match(/\d+/)[0];
+            document.getElementById(`quantity-${itemId}`).textContent = '0';
+        });
+        updateCart();
     } catch (error) {
         console.error('Error placing order:', error);
-        alert('Failed to place order. Please try again later.');
+        alert('Failed to place order. Please try again.');
     }
 } 
